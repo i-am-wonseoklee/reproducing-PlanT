@@ -220,3 +220,4 @@ __marimo__/
 # Custom
 ignore/
 CLAUDE.md
+data/*.db

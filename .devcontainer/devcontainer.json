@@ -3,6 +3,7 @@
   "dockerComposeFile": "docker-compose.yml",
   "service": "workspace",
   "workspaceFolder": "/workspace",
+  "postCreateCommand": "pip install -e /workspace",
   "shutdownAction": "stopCompose",
   "customizations": {
     "vscode": {

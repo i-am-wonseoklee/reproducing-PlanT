@@ -42,19 +42,19 @@ All commands are run inside the `workspace` container (i.e., the VS Code termina
 Drive CARLA with autopilot and save observations to disk:
 
 ```bash
-python scripts/collect_data.py --host carla --port 2000 --output data/
+python scripts/collect.py --config configs/collect.yaml --output data/frames.db --episodes 10 --ticks 2000
 ```
 
 ### 2. Train
 
 ```bash
-python train.py --config configs/plant_medium.yaml --data data/
+python scripts/train.py --config configs/plant_medium.yaml --data data/
 ```
 
 ### 3. Evaluate offline
 
 ```bash
-python evaluate.py --config configs/plant_medium.yaml --checkpoint checkpoints/last.ckpt --data data/
+python scripts/evaluate.py --config configs/plant_medium.yaml --checkpoint checkpoints/last.ckpt --data data/
 ```
 
 ### 4. Run closed-loop simulation
@@ -63,21 +63,5 @@ Drive CARLA with the trained model.
 A BEV visualizer window opens on your host display:
 
 ```bash
-python scripts/run_simulation.py --host carla --port 2000 --checkpoint checkpoints/last.ckpt
-```
-
-## Project Structure
-
-```
-.devcontainer/          Dev container config (Docker Compose + Dockerfile)
-configs/                Model & training hyperparameters (MINI / SMALL / MEDIUM)
-plant/
-  model/                PlanT model components (one file per paper section)
-  data/                 Dataset loader + route segment generation
-  carla/                CARLA integration (data collector + closed-loop agent)
-  utils/                Geometry utils + BEV visualizer
-scripts/                Entry points for data collection and simulation
-tests/                  Unit tests (runnable without CARLA)
-train.py                Training entry point
-evaluate.py             Offline evaluation entry point
+python scripts/simulate.py --host carla --port 2000 --checkpoint checkpoints/last.ckpt
 ```
