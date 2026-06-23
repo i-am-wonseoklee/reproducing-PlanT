@@ -1,0 +1,42 @@
+[project]
+name = "reproducing-plant"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    # ML
+    "torch",
+    "numpy",
+    "scipy",
+    "tqdm",
+    "tensorboard",
+    # CARLA Python API
+    "carla==0.9.15",
+    # Geometry
+    "shapely",
+    # Config
+    "pyyaml",
+    # Visualization
+    "pygame",
+    # Test
+    "pytest",
+    # Dev
+    "ruff",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # isort
+]
+
+[tool.ruff.format]
+quote-style = "double"

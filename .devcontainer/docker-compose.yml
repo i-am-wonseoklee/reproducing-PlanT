@@ -1,0 +1,39 @@
+services:
+  carla:
+    image: carlasim/carla:0.9.15
+    command: /bin/bash -c "./CarlaUE4.sh -RenderOffScreen -nosound -world-port=2000"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  workspace:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - ..:/workspace:cached
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    depends_on:
+      - carla
+    stdin_open: true
+    tty: true
+    command: sleep infinity
