@@ -1,0 +1,26 @@
+# Configuration file for collecting data from CARLA simulator.
+
+# Below two parameters should match the settings in the .devcontainer/docker-compose.yml.
+host: "carla" # The hostname of the CARLA simulator service.
+port: 2000    # The port on which the CARLA simulator is running.
+
+carla_timeout: 60.0     # The timeout in seconds for all CARLA client calls [s].
+world_warmup_ticks: 60  # The number of ticks to wait after loading.
+
+fps: 20           # Frame per second for simulation.
+collect_tick: 10  # For every collect_tick frames, the data will be collected.
+
+# The one of the following towns will be randomly selected for each episode.
+towns:
+  - "Town01"
+  - "Town02"
+  - "Town03"
+  - "Town04"
+  - "Town05"
+
+n_npcs: 50      # The number of NPC vehicles to spawn in the simulation.
+n_waypoints: 50 # The number of waypoints to collect.
+
+vehicle_filter_radius: 30.0   # The radius to filter vehicles around the ego vehicle [m].
+min_ego_dest_distance: 100.0  # Minimum distance between ego start and destination spawn points [m].
+min_npc_spawn_distance: 10.0  # Minimum distance between NPC spawn points and the ego vehicle [m].
