@@ -296,6 +296,13 @@ class Collector:
         episode = f"episode_{episode_id:04d}"
         towns = self.config.towns or ["Town01"]
         town = np.random.choice(towns)
+
+        # Reconnect each episode: the TM keeps a C++ background thread alive for the
+        # lifetime of carla.Client. Reusing the same client across episodes accumulates
+        # TM thread state and eventually causes an uncatchable TimeoutException abort.
+        self.client = carla.Client(self.config.host, self.config.port)
+        self.client.set_timeout(self.config.carla_timeout)
+
         try:
             logger.info("[%s] setting up world (%s) ...", episode, town)
             self._setup_world(town)
@@ -358,6 +365,15 @@ class Collector:
                 pass
         self.npcs.clear()
         self.ego = None
+
+        # TM sync mode must be disabled before world sync mode. Leaving TM in sync
+        # mode causes a deadlock on the next episode's load_world() tick, which
+        # triggers a TimeoutException on the TM's C++ thread — uncatchable from Python.
+        try:
+            tm = self.client.get_trafficmanager()
+            tm.set_synchronous_mode(False)
+        except Exception:
+            pass
 
         settings = self.world.get_settings()
         settings.synchronous_mode = False
