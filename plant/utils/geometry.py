@@ -52,6 +52,11 @@ class Pose:
         return other @ self.rot.T + self.trans
 
 
+def wrap_to_pi(angle: float | np.ndarray) -> float | np.ndarray:
+    """Normalize angle(s) to [-pi, pi]."""
+    return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
 def rotated_corners(
     x: float, y: float, w: float, h: float, yaw: float
 ) -> list[tuple[float, float]]:

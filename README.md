@@ -42,7 +42,7 @@ All commands are run inside the `workspace` container (i.e., the VS Code termina
 Drive CARLA with autopilot and save observations to disk:
 
 ```bash
-python scripts/collect.py --config configs/collect.yaml --output data/frames.db --episodes 10 --ticks 2000
+python scripts/collect.py --config configs/collector.yaml --output data/frames.db --episodes 10 --ticks 2000
 ```
 
 ### 2. Train

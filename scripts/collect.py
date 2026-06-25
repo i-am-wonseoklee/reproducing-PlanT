@@ -5,6 +5,7 @@ import multiprocessing as mp
 from dataclasses import fields
 from pathlib import Path
 
+import numpy as np
 import yaml
 
 from plant.carla.collector import Collector, CollectorConfig
@@ -18,13 +19,16 @@ def _run_episode(config: CollectorConfig, episode_id: int, num_ticks: int) -> No
     background thread, uncatchable in Python) kills only this subprocess and
     not the outer collection loop.
     """
+    # Fork inherits the parent's numpy RNG state; reseed from OS entropy so
+    # each episode gets independent random choices (town, spawn point, etc.).
+    np.random.seed()
     collector = Collector(config)
     collector.run(episode_id=episode_id, num_ticks=num_ticks)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="configs/collect.yaml")
+    parser.add_argument("--config", default="configs/collector.yaml")
     parser.add_argument("--output", default="data/frames.db")
     parser.add_argument("--episodes", type=int, default=1)
     parser.add_argument("--ticks", type=int, default=2000)

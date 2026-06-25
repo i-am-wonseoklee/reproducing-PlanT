@@ -19,8 +19,8 @@ towns:
   - "Town05"
 
 n_npcs: 100     # The number of NPC vehicles to spawn in the simulation.
-n_waypoints: 50 # The number of waypoints to collect.
+n_waypoints: 50 # The number of waypoints to collect per frame.
 
 vehicle_filter_radius: 30.0   # The radius to filter vehicles around the ego vehicle [m].
-min_ego_dest_distance: 100.0  # Minimum distance between ego start and destination spawn points [m].
 min_npc_spawn_distance: 10.0  # Minimum distance between NPC spawn points and the ego vehicle [m].
+

@@ -2,21 +2,48 @@
 
 Column values example
 ---------------------
-```
-episode:             "episode_0001"
-tick:                42
-ego:                 {"x": 12.3, "y": -4.5, "z": 0.2,
-                      "roll": 0.0, "pitch": 0.0, "yaw": 1.57,
-                      "vx": 8.3, "vy": 0.1,
-                      "throttle": 0.6, "steer": -0.05, "brake": 0.0}
-npcs:                [{"actor_id": 42, "x": 18.1, "y": -4.3, "yaw": 1.60, "speed": 7.9,
-                       "w": 2.1, "h": 4.8, "type": "vehicle.tesla.model3"},
-                      {"actor_id": 87, "x": 4.8, "y": -6.7, "yaw": 1.55, "speed": 0.0,
-                       "w": 2.3, "h": 5.2, "type": "vehicle.carlamotors.firetruck"}]
-traffic_light:       [{"state": "Red", "distance": 18.4, "x": 112.3, "y": -5.1}]
-waypoints:           [{"x": 14.2, "y": -4.4, "yaw": 1.57, "road_width": 3.5}, ...]
-preview:             <PNG bytes>
-```
+episode: "episode_0001"
+tick: 42
+ego:
+    {
+        "x": 12.3,
+        "y": -4.5,
+        "z": 0.2,
+        "roll": 0.0,
+        "pitch": 0.0,
+        "yaw": 1.57,
+        "vx": 8.3,
+        "vy": 0.1,
+        "throttle": 0.6,
+        "steer": -0.05,
+        "brake": 0.0
+    }
+npcs:
+    [
+        {
+            "actor_id": 42,
+            "x": 18.1,
+            "y": -4.3,
+            "yaw": 1.60,
+            "speed": 7.9,
+            "w": 2.1,
+            "h": 4.8,
+            "type": "vehicle.tesla.model3"
+        },
+        {
+            "actor_id": 87,
+            "x": 4.8,
+            "y": -6.7,
+            "yaw": 1.55,
+            "speed": 0.0,
+            "w": 2.3,
+            "h": 5.2,
+            "type": "vehicle.carlamotors.firetruck"
+        }
+    ]
+traffic_light: [{"state": "Red", "distance": 18.4, "x": 112.3, "y": -5.1}]
+waypoints: [{"x": 14.2, "y": -4.4, "yaw": 1.57, "road_width": 3.5}, ...]
+preview: <PNG bytes>
 """
 
 import json
@@ -29,13 +56,13 @@ from pathlib import Path
 class Frame:
     """One timestep of collected driving data.
 
-    episode:       episode identifier string (e.g. "episode_0001")
-    tick:          sequential save index within the episode
-    ego:           ego vehicle state (position, orientation, velocity, control)
-    npcs:          nearby NPC vehicles within vehicle_filter_radius, sorted by distance
-    traffic_light: active traffic light state list; empty when ego is not at a light
-    waypoints:     route waypoints ahead of ego along the planned path
-    preview:       optional bird's-eye-view PNG for debugging
+    episode: Episode identifier string (e.g. "episode_0001")
+    tick: Sequential save index within the episode
+    ego: Ego vehicle state (position, orientation, velocity, control)
+    npcs: Nearby NPC vehicles within vehicle_filter_radius, sorted by distance
+    traffic_light: Active traffic light state list; empty when ego is not at a light
+    waypoints: Route waypoints ahead of ego along the planned path
+    preview: Optional bird's-eye-view PNG for debugging
     """
 
     episode: str
@@ -47,19 +74,12 @@ class Frame:
     preview: bytes | None = None
 
 
-# order must match _row_to_frame unpacking; BLOB excluded by default
 _DATA_COLS = "episode, tick, ego, npcs, traffic_light, waypoints"
 _ALL_COLS = _DATA_COLS + ", preview"
 
 
 class Storage:
-    """SQLite-backed append-only store for Frame objects.
-
-    Supports context manager usage::
-
-        with Storage("data/frames.db") as s:
-            s.write_batch(frames)
-    """
+    """SQLite-backed append-only store for Frame objects."""
 
     def __init__(self, path: str | Path):
         self.path = Path(path)
@@ -88,7 +108,6 @@ class Storage:
     # ------------------------------------------------------------------
 
     def write(self, frame: Frame):
-        """Insert a single frame and commit."""
         self._conn.execute(
             f"INSERT INTO frames ({_ALL_COLS}) VALUES (?, ?, ?, ?, ?, ?, ?)",
             self._frame_to_row(frame),
@@ -96,7 +115,6 @@ class Storage:
         self._conn.commit()
 
     def write_batch(self, frames: list[Frame]):
-        """Insert multiple frames in a single transaction."""
         self._conn.executemany(
             f"INSERT INTO frames ({_ALL_COLS}) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [self._frame_to_row(f) for f in frames],
