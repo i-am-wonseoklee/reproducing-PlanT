@@ -1,0 +1,28 @@
+# --- Transformer Encoder -------------------------------------------------------
+d_model: 512        # token embedding dimension
+n_heads: 8          # number of multi-head self-attention heads
+n_layers: 8         # number of encoder layers
+dropout: 0.1
+
+# --- GRU Decoder --------------------------------------------------------------
+gru_hidden_size: 64 # GRU hidden state dimension
+n_predictions: 4    # number of future waypoints to predict (autoregressive steps)
+
+# --- Input Token Sequence ------------------------------------------------------
+# n_obstacles: upper cap on obstacle tokens per frame. Frames with more obstacles
+# are truncated to this limit. The dataset zero-pads up to this count with a bool
+# mask marking valid slots. A collate_fn in train.py can trim to the batch maximum
+# (dynamic padding); the model reads sequence length from the tensor shape, not
+# from this config value.
+n_obstacles: 100
+n_route_segments: 2 # number of route tokens (fixed 2 segments per paper)
+
+# --- Auxiliary Loss Discretisation ---------------------------------------------
+n_position_bins: 128    # classes per position axis (x, y binned separately); 원본 precision_pos=7 → 2^7, ~0.5 m/bin
+n_velocity_bins: 16     # classes for future obstacle velocity; 원본 precision_speed=4 → 2^4, 3.75 km/h/bin
+n_orientation_bins: 32  # classes for future obstacle orientation; 원본 precision_angle=5 → 2^5, 11.25°/bin
+range_max: 30.0         # observation radius around ego (m); defines position bin range (원본: [-30, 30] m)
+speed_max: 16.67        # max speed for velocity bin range (m/s); 원본 [0, 60] km/h = 16.67 m/s
+
+# --- Loss ----------------------------------------------------------------------
+aux_loss_weight: 0.2    # total_loss = L1(waypoint) + 0.2 * CE(auxiliary)

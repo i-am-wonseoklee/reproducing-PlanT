@@ -34,12 +34,10 @@ class Dataset(TorchDataset):
         n_predictions: int = 4,
         n_obstacles: int = 100,
         n_route_segments: int = 2,
-        target_point_distance: float = 30.0,
     ):
         self.n_predictions = n_predictions
         self.n_obstacles = n_obstacles
         self.n_route_segments = n_route_segments
-        self.target_point_distance = target_point_distance
 
         self._storage = Storage(db_path)
 
@@ -57,6 +55,16 @@ class Dataset(TorchDataset):
 
     def __len__(self) -> int:
         return len(self._index)
+
+    def indices_by_episode(self) -> dict[str, list[int]]:
+        """Map each episode id to the flat sample indices it contributes.
+
+        Lets callers build episode level splits without reaching into internals.
+        """
+        out: dict[str, list[int]] = {}
+        for i, (ep, _) in enumerate(self._index):
+            out.setdefault(ep, []).append(i)
+        return out
 
     def __getitem__(self, idx: int) -> dict:
         episode, pos = self._index[idx]
@@ -117,15 +125,12 @@ class Dataset(TorchDataset):
     def _build_target_point(self, waypoints: list, inv_ego: Pose) -> np.ndarray:
         """Far point proxy for the sparse GPS goal p_target.
 
-        The original PlanT target_point is a global-planner node 10-50m ahead,
-        not a near aim point. We lack the sparse plan, so we take the dense
-        waypoint nearest target_point_distance (waypoints are ~1m apart), clamped to
-        the last available one when the route is shorter.
+        The route's last waypoint is the farthest goal point we have, so it is
+        always beyond the predicted waypoints. Empty route falls back to origin.
         """
         if not waypoints:
             return np.zeros(2, dtype=np.float32)
-        idx = min(round(self.target_point_distance), len(waypoints) - 1)
-        wp = waypoints[idx]
+        wp = waypoints[-1]
         ego_xy = inv_ego @ np.array([wp["x"], wp["y"], 0.0])
         return ego_xy[:2].astype(np.float32)
 

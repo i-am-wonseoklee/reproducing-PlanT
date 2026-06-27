@@ -221,3 +221,7 @@ __marimo__/
 ignore/
 CLAUDE.md
 data/*.db
+data/*/*.db
+checkpoints/
+runs/
+*.ckpt

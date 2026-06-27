@@ -30,8 +30,15 @@ xhost +local:docker
 Ctrl+Shift+P → "Dev Containers: Reopen in Container"
 ```
 
-VS Code will build the `workspace` container and start the `carla` container via Docker Compose.
+VS Code will build the `workspace` container.
 This may take several minutes on the first run.
+
+The `carla` container does **not** start automatically.
+Start and stop it on demand from the VS Code terminal or the Tasks menu:
+
+```
+Ctrl+Shift+P → "Tasks: Run Task" → "Start CARLA" / "Stop CARLA"
+```
 
 ## Usage
 
@@ -42,19 +49,31 @@ All commands are run inside the `workspace` container (i.e., the VS Code termina
 Drive CARLA with autopilot and save observations to disk:
 
 ```bash
-python scripts/collect.py --config configs/collector.yaml --output data/frames.db --episodes 10 --ticks 2000
+python3 scripts/collect.py \
+    --config configs/collector.yaml \  # CARLA connection and spawn settings
+    --output data/frames.db \          # output SQLite DB path
+    --episodes 10 \                    # number of episodes to collect
+    --ticks 2000                       # ticks per episode
 ```
 
 ### 2. Train
 
 ```bash
-python scripts/train.py --config configs/plant_medium.yaml --data data/
+python3 scripts/train.py \
+    --model-config configs/plant.yaml \   # model architecture (d_model, n_layers, …)
+    --train-config configs/train.yaml \   # training loop (lr, batch_size, epochs, …)
+    --data data/frames.db \               # path to collected frames DB
+    --run-name my_run                     # (optional) subdirectory under log/ckpt dirs
 ```
 
 ### 3. Evaluate offline
 
 ```bash
-python scripts/evaluate.py --config configs/plant_medium.yaml --checkpoint checkpoints/last.ckpt --data data/
+python3 scripts/evaluate.py \
+    --checkpoint checkpoints/best.ckpt \  # trained checkpoint (model config is embedded)
+    --data data/frames.db \               # path to frames DB
+    --out data/eval.db \                  # (optional) output DB for metrics and BEV images
+    --episode episode_0001                # (optional) render a single episode only
 ```
 
 ### 4. Run closed-loop simulation
@@ -63,5 +82,6 @@ Drive CARLA with the trained model.
 A BEV visualizer window opens on your host display:
 
 ```bash
-python scripts/simulate.py --host carla --port 2000 --checkpoint checkpoints/last.ckpt
+# not yet implemented
+# python3 scripts/simulate.py --checkpoint checkpoints/best.ckpt
 ```

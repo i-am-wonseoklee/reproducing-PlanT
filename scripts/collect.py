@@ -1,6 +1,7 @@
 """Collect driving data from CARLA using autopilot."""
 
 import argparse
+import logging
 import multiprocessing as mp
 from dataclasses import fields
 from pathlib import Path
@@ -10,6 +11,8 @@ import yaml
 
 from plant.carla.collector import Collector, CollectorConfig
 from plant.data.storage import Storage
+
+logger = logging.getLogger(__name__)
 
 
 def _run_episode(config: CollectorConfig, episode_id: int, num_ticks: int) -> None:
@@ -34,6 +37,11 @@ def main():
     parser.add_argument("--ticks", type=int, default=2000)
     args = parser.parse_args()
 
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
 
@@ -49,9 +57,10 @@ def main():
         with Storage(db_path) as storage:
             start_episode = len(storage.episodes())
 
-    for i in range(args.episodes):
+    i = 0
+    while i < args.episodes:
         episode_id = start_episode + i
-        print(f"Episode {episode_id}")
+        logger.info("Episode %d", episode_id)
         p = mp.Process(
             target=_run_episode,
             args=(config, episode_id, args.ticks),
@@ -60,10 +69,11 @@ def main():
         p.start()
         p.join()
         if p.exitcode != 0:
-            print(
-                f"Episode {episode_id} subprocess crashed "
-                f"(exit code {p.exitcode}), skipping."
+            logger.warning(
+                "Episode %d crashed (exit code %d), retrying.", episode_id, p.exitcode
             )
+            continue
+        i += 1
 
 
 if __name__ == "__main__":

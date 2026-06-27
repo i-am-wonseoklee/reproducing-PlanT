@@ -1,0 +1,31 @@
+# Training config for scripts/train.py.
+#
+# Values reproduce the original PlanT implementation (autonomousvision/plant).
+# Sources: training/config/model/PlanT.yaml, training/config/config.yaml,
+# training/PlanT/model.py (configure_optimizers), training/PlanT/lit_module.py.
+#
+# Model architecture lives in configs/plant.yaml; this file holds only the
+# training loop settings. Edit this file (or pass another via --train-config)
+# to change hyperparameters; train.py has no per-value override flags.
+
+batch_size: 32          # original batch_size
+epochs: 100             # max epochs (original 50, but we train longer to match the original paper's 100)
+lr: 1.0e-4              # original learning_rate (write as 1.0e-4 so PyYAML parses a float)
+weight_decay: 0.1       # original weight_decay (applied to nn.Linear weights only)
+betas: [0.9, 0.95]      # original AdamW betas (GPT style)
+grad_clip: 1.0          # original grad_norm_clip (0 disables clipping)
+lr_decay_epoch: 92      # original MultiStepLR decay epoch (0 disables decay)
+lr_decay_gamma: 0.1     # original MultiStepLR decay factor
+
+num_workers: 12         # DataLoader workers (original num_workers)
+seed: 1234              # original seed
+val_episodes: 2         # hold out the last N episodes as the validation set
+amp: false              # original trains in fp32; set true for CUDA mixed precision
+
+log_interval: 50        # log training scalars every N steps
+ckpt_dir: checkpoints   # directory for last.ckpt and best.ckpt
+log_dir: runs           # TensorBoard output directory
+
+# Debug knobs (mirror the original trainset_size). null means use all batches.
+limit_train_batches: null   # cap train steps per epoch
+limit_val_batches: null     # cap validation steps per epoch

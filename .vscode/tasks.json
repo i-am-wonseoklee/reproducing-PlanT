@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start CARLA",
+      "type": "shell",
+      "command": "docker compose -p reproducing-plant_devcontainer -f /workspace/.devcontainer/docker-compose.yml --profile carla start carla || docker compose -p reproducing-plant_devcontainer -f /workspace/.devcontainer/docker-compose.yml --profile carla up -d carla",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop CARLA",
+      "type": "shell",
+      "command": "docker compose -p reproducing-plant_devcontainer -f /workspace/.devcontainer/docker-compose.yml stop carla",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

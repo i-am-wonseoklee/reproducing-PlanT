@@ -1,7 +1,16 @@
 services:
   carla:
+    profiles: [carla]
     image: carlasim/carla:0.9.15
-    command: /bin/bash -c "./CarlaUE4.sh -RenderOffScreen -nosound -world-port=2000"
+    command: >-
+      /bin/bash -c "
+        while true; do
+          rm -rf /dev/shm/* 2>/dev/null || true;
+          ./CarlaUE4.sh -RenderOffScreen -nosound -world-port=2000;
+          echo 'CARLA exited, restarting in 3s...';
+          sleep 3;
+        done
+      "
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
@@ -25,6 +34,7 @@ services:
     volumes:
       - ..:/workspace:cached
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /var/run/docker.sock:/var/run/docker.sock
     deploy:
       resources:
         reservations:
@@ -32,8 +42,6 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-    depends_on:
-      - carla
     stdin_open: true
     tty: true
     command: sleep infinity
