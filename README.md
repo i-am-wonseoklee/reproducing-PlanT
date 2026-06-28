@@ -94,6 +94,8 @@ python3 scripts/evaluate.py             \
 
 ### 4. Run closed-loop simulation
 
+> If you just want to see the model drive, see [Closed-loop Results](#closed-loop-results).
+
 This step needs the CARLA server, so start it first:
 
 ```
@@ -101,12 +103,23 @@ Ctrl+Shift+P → "Tasks: Run Task" → "Start CARLA"
 ```
 
 Drive CARLA with the trained model.
-A BEV visualizer window opens on your host display:
+The ego is steered by the model while NPCs run on autopilot.
+No CARLA 3D rendering is used; the run is recorded as a BEV video (the same
+ego-frame view as `evaluate.py`, with the predicted waypoints overlaid) and
+written to an MP4:
 
 ```bash
-# not yet implemented
-# python3 scripts/simulate.py --checkpoint checkpoints/best.ckpt
+python3 scripts/simulate.py                 \
+    --checkpoint checkpoints/best.ckpt      \ # trained checkpoint (model config is embedded)
+    --config configs/simulate.yaml          \ # CARLA connection, controller, and video settings
+    --out data/simulation.mp4               \ # output BEV video
+    --town Town03                           \ # (optional) override the config town
+    --ticks 1000                              # (optional) override the max simulation ticks
 ```
+
+The run stops early on collision.
+The waypoints are converted to steering and throttle by a PID + pure-pursuit
+controller (`plant/carla/controller.py`); its gains live in the config.
 
 Stop CARLA when you are done:
 
@@ -181,3 +194,45 @@ These numbers were almost certainly not the model's ceiling.
 Looking at the training curves in Figure 3, the training losses were still descending at epoch 100, the validation auxiliary loss was still trending down, and every curve dropped again right after the learning-rate decay at epoch 92.
 None of that looks fully converged, so a longer schedule (or a second decay step) would likely have improved these figures.
 Pushing that further was simply out of scope here.
+
+## Closed-loop Results
+
+The offline metrics above measure single-frame prediction error.
+Closed-loop driving is the harder test: the model acts on its own predictions tick after tick, so small errors compound and the only way to judge it is to watch it drive.
+
+The clip below is a BEV recording of the best checkpoint driving in CARLA, produced by step 4.
+It is the same ego-frame view as the evaluation renders, except there is no ground truth: the ego is steered entirely by the model's predicted waypoints, which a PID + pure-pursuit controller turns into steering and throttle.
+
+▶ [Watch the closed-loop driving clip (MP4)](assets/simulation.mp4)
+
+<em>Figure 4. Closed-loop driving. Red bbox: ego vehicle, blue bboxes: obstacles (vehicles), green boxes: routes, yellow star: target point, orange circles: predicted waypoints. The traffic-light state is shown top-left.</em>
+
+This is a qualitative demo, not a scored benchmark.
+The paper treats only vehicles as obstacles, so the ego can clip static roadside objects without that counting as a failure; collisions with other vehicles stop the run.
+As with the offline numbers, no tuning was done beyond getting the loop to drive.
+
+A few things about closed-loop differ from the offline pipeline and are worth recording.
+
+**The CARLA coordinate system is the part that cost the most time.**
+CARLA inherits Unreal's left-handed frame: +x is forward, +y is to the **right**, +z is up, and a positive yaw rotates +x toward +y, which is a clockwise (right) turn seen from above.
+This is the opposite handedness from the right-handed, +y-is-left convention common in robotics and most textbooks, and that mismatch is exactly where the bug hid.
+
+The model never sees world coordinates.
+The data pipeline stores the raw CARLA `x`, `y`, `yaw` of the ego and every actor, builds the ego pose, and inverts it to map everything into the ego frame (the same `Pose` math the training `Dataset` uses, shared through [`plant/data/features.py`](plant/data/features.py) so closed-loop tokens are identical to training tokens).
+Working it out, and verifying it numerically, a point to the ego's right lands at **+y** in this ego frame and a point straight ahead lands at +x.
+So in every feature (obstacles, route, predicted waypoints) a positive `y` means "to my right", and the model learns and predicts in that frame.
+
+The controller then has to turn a predicted waypoint back into a steering command, and CARLA's `VehicleControl.steer` is **+1 full right, -1 full left** (positive steer turns right, which matches CARLA's own `VehiclePIDController`).
+Lining the two facts up: an aim point to the right is `+y`, so `angle = atan2(y, x) > 0`, and a right turn needs `steer > 0`, so the waypoint angle maps **directly** to steer with no sign flip.
+
+The first implementation assumed the textbook convention instead (+y left, positive steer left) and negated the angle.
+The result was a car that steered the wrong way on every curve: it left its lane on the outside of each bend and drove straight into the roadside scenery.
+The fix was a one-character change (drop the negation in [`plant/carla/controller.py`](plant/carla/controller.py)), but finding it meant deriving the ego-frame handedness from first principles rather than trusting the usual convention.
+The lesson is the obvious one in hindsight: with CARLA, never assume the coordinate convention, derive it.
+
+**Other notable points:**
+
+- **Speed comes out of the waypoint spacing, not a separate head.** The waypoints are spaced 0.5 s apart, so the distance between the first two predictions divided by 0.5 s is the model's intended speed. A longitudinal PID tracks it, and bunched-up waypoints (a stop) naturally fall below the brake threshold. Steering is a separate pure-pursuit PID aimed at the 1.0 s waypoint. Both controllers follow the original TransFuser/PlanT closed-loop agent, including its gains.
+- **No 3D rendering, no real-time.** The world runs in synchronous mode and is ticked manually, so the run is deterministic and as fast as inference allows. The only output is the BEV video; CARLA's camera and the host display are never used.
+- **Closed-loop has no ground truth.** Offline rendering overlays the recorded future trajectory (white); here there is none, so the BEV passes an empty waypoint array and only the predicted (orange) trajectory is drawn.
+- **Static collisions are ignored but not free.** Per the paper only vehicles are obstacles, so the run does not stop on a static hit. CARLA physics still blocks the ego, though, so a car that drives into a wall simply gets stuck there for the rest of the clip.

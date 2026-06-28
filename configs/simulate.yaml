@@ -1,0 +1,40 @@
+# Configuration for closed-loop simulation (scripts/simulate.py).
+#
+# The ego is driven by the trained model; NPCs run on CARLA autopilot. Only a
+# BEV visualization is produced (no CARLA 3D rendering), written to an MP4.
+
+# Below two parameters should match the settings in the .devcontainer/docker-compose.yml.
+host: "carla"  # The hostname of the CARLA simulator service.
+port: 2000     # The port on which the CARLA simulator is running.
+
+carla_timeout: 60.0     # Timeout in seconds for all CARLA client calls [s].
+world_warmup_ticks: 60  # Ticks to wait after loading before driving.
+
+fps: 20            # Simulation step rate; each world.tick() advances 1/fps seconds.
+town: "Town01"     # Map to drive on.
+max_ticks: 2000    # Maximum simulation ticks before stopping.
+n_npcs: 50         # Number of NPC vehicles (autopilot traffic) to spawn.
+
+n_waypoints: 100             # Dense route waypoints read ahead of the ego.
+vehicle_filter_radius: 30.0  # Radius to include surrounding vehicles [m].
+min_npc_spawn_distance: 10.0 # Minimum NPC spawn distance from the ego [m].
+
+# --- Visualization / video ----------------------------------------------------
+render_every: 1   # Render a BEV frame every N ticks (1 = every tick).
+video_fps: 20     # MP4 playback frame rate.
+bev_radius: 60.0  # Half-width of the rendered square BEV viewport [m].
+
+# --- Controller (Transfuser-style PID + pure-pursuit) -------------------------
+controller:
+  turn_k_p: 1.25
+  turn_k_i: 0.75
+  turn_k_d: 0.3
+  turn_n: 20
+  speed_k_p: 5.0
+  speed_k_i: 0.5
+  speed_k_d: 1.0
+  speed_n: 20
+  max_throttle: 0.75
+  brake_speed: 0.4
+  brake_ratio: 1.1
+  clip_delta: 0.25

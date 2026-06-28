@@ -5,9 +5,9 @@ from pathlib import Path
 import numpy as np
 from torch.utils.data import Dataset as TorchDataset
 
+from plant.data.features import build_input_features
 from plant.data.storage import Storage
 from plant.utils.geometry import Pose, wrap_to_pi
-from plant.utils.route import waypoints_to_route_segments
 
 
 class Dataset(TorchDataset):
@@ -76,63 +76,26 @@ class Dataset(TorchDataset):
         ego = f_t.ego
         ego_xyz = np.array([ego["x"], ego["y"], ego["z"]])
         ego_rpy = np.array([ego["roll"], ego["pitch"], ego["yaw"]])
-        ego_pose = Pose.from_xyz_rpy(ego_xyz, ego_rpy)
-        inv_ego = ego_pose.inv()
+        inv_ego = Pose.from_xyz_rpy(ego_xyz, ego_rpy).inv()
         ego_yaw = ego["yaw"]
 
         return {
-            **self._build_obstacles(f_t.npcs, inv_ego, ego_yaw),
-            "feature_route_segments": self._build_route_segments(
-                f_t.waypoints, inv_ego
+            **build_input_features(
+                ego,
+                f_t.npcs,
+                f_t.traffic_light,
+                f_t.waypoints,
+                self.n_obstacles,
+                self.n_route_segments,
             ),
-            "feature_traffic_light": self._build_traffic_light(f_t.traffic_light),
-            "feature_target_point": self._build_target_point(f_t.waypoints, inv_ego),
             "feature_waypoints": self._build_waypoints(future_frames, inv_ego),
             **self._build_future_obstacles(f_t.npcs, future_frames, inv_ego, ego_yaw),
         }
 
     # ------------------------------------------------------------------
-    # Per-field builders
+    # Per-field builders (training-only targets; inference inputs live in
+    # plant/data/features.py and are shared with the closed-loop agent)
     # ------------------------------------------------------------------
-
-    def _build_obstacles(self, npcs: list, inv_ego: Pose, ego_yaw: float) -> dict:
-        feat = np.zeros((self.n_obstacles, 6), dtype=np.float32)
-        mask = np.zeros(self.n_obstacles, dtype=bool)
-
-        for i, npc in enumerate(npcs[: self.n_obstacles]):
-            world_xy = np.array([npc["x"], npc["y"], 0.0])
-            ego_xy = inv_ego @ world_xy
-            yaw = wrap_to_pi(npc["yaw"] - ego_yaw)
-            feat[i] = [npc["speed"], ego_xy[0], ego_xy[1], yaw, npc["w"], npc["h"]]
-            mask[i] = True
-
-        return {"feature_obstacles": feat, "mask_obstacles": mask}
-
-    def _build_route_segments(self, waypoints: list, inv_ego: Pose) -> np.ndarray:
-        if not waypoints:
-            return np.zeros((self.n_route_segments, 6), dtype=np.float32)
-
-        world_xy = np.array([[wp["x"], wp["y"], 0.0] for wp in waypoints])
-        ego_xy = np.stack([inv_ego @ p for p in world_xy])[:, :2]
-        road_widths = np.array([wp["road_width"] for wp in waypoints], dtype=float)
-
-        return waypoints_to_route_segments(ego_xy, road_widths, self.n_route_segments)
-
-    def _build_traffic_light(self, traffic_light: list) -> np.ndarray:
-        is_red = any(tl.get("state") == "Red" for tl in traffic_light)
-        return np.array([1.0 if is_red else 0.0], dtype=np.float32)
-
-    def _build_target_point(self, waypoints: list, inv_ego: Pose) -> np.ndarray:
-        """Far point proxy for the sparse GPS goal p_target.
-
-        The route's last waypoint is the farthest goal point we have, so it is
-        always beyond the predicted waypoints. Empty route falls back to origin.
-        """
-        if not waypoints:
-            return np.zeros(2, dtype=np.float32)
-        wp = waypoints[-1]
-        ego_xy = inv_ego @ np.array([wp["x"], wp["y"], 0.0])
-        return ego_xy[:2].astype(np.float32)
 
     def _build_waypoints(self, future_frames: list, inv_ego: Pose) -> np.ndarray:
         feat = np.zeros((self.n_predictions, 2), dtype=np.float32)

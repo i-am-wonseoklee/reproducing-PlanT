@@ -19,6 +19,7 @@ dependencies = [
     # Visualization
     "pygame",
     "matplotlib",
+    "imageio[ffmpeg]",
     # Test
     "pytest",
     # Dev
